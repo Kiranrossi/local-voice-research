@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tamlish Voice Recorder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: clip list on the left, one large "teleprompter" sentence on the right, stacked on phones */
+:root {
+  --bg: #f4f6f5;
+  --panel: #ffffff;
+  --fg: #18211f;
+  --muted: #5b6965;
+  --line: #dbe2df;
+  --accent: #0e6e66;
+  --accent-soft: #e3f1ef;
+  --rec: #d1281b;
+  --rec-soft: #fbe7e5;
+  --ok: #187547;
+  --warn: #a8570a;
+  --warn-soft: #fbf0e3;
+  --font: "Hind Madurai", "Tamil Sangam MN", "Noto Sans Tamil", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1312;
+    --panel: #151c1a;
+    --fg: #e6eeeb;
+    --muted: #93a39e;
+    --line: #26302d;
+    --accent: #3fbfaf;
+    --accent-soft: #15302c;
+    --rec: #ff5b4d;
+    --rec-soft: #3a1714;
+    --ok: #4cc48a;
+    --warn: #f0a24a;
+    --warn-soft: #36260f;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--font); }
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px;
+}
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+h1 { font-size: 1.5rem; font-weight: 600; margin: 0; line-height: 1.2; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 0.95rem; margin: 2px 0 0; }
+.head-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.progress { display: grid; gap: 4px; min-width: 180px; }
+.progress-label { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 8px 14px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .primary { color: #071311; } }
+
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+
+.list { max-height: calc(100vh - 140px); overflow: auto; padding: 8px; }
+.group-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 8px 4px; }
+.item { display: grid; grid-template-columns: 10px 48px minmax(0, 1fr); gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; background: transparent; }
+.item:hover { background: var(--accent-soft); }
+.item[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.dot.done { background: var(--ok); border-color: var(--ok); }
+.dot.flag { background: var(--warn); border-color: var(--warn); }
+.item-id { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+.item-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem; }
+
+.stage { padding: 24px; display: grid; gap: 20px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: var(--muted); font-size: 0.9rem; }
+.chip-id { font-family: var(--mono); font-size: 0.85rem; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--fg); }
+.sentence { font-size: clamp(1.5rem, 3.2vw, 2.25rem); line-height: 1.45; font-weight: 500; margin: 0; min-height: 3.2em; overflow-wrap: anywhere; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.rec-btn { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; font-weight: 600; font-size: 1.05rem; border-radius: 999px; border-color: var(--rec); color: var(--rec); background: var(--panel); }
+.rec-btn::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--rec); }
+.rec-btn.recording { background: var(--rec); color: #fff; }
+.rec-btn.recording::before { border-radius: 3px; background: #fff; }
+.spacer { flex: 1; }
+
+.meter-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 0.85rem; color: var(--muted); }
+.meter { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.meter > span { display: block; height: 100%; width: 0; background: var(--ok); transition: width 60ms linear; }
+.meter.hot > span { background: var(--rec); }
+.timer { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.take { display: grid; gap: 10px; padding: 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+.take audio { width: 100%; }
+.take-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.flag-chip { padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; background: var(--warn-soft); color: var(--warn); }
+.ok-chip { padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; background: var(--accent-soft); color: var(--ok); }
+.status { min-height: 1.5em; font-size: 0.92rem; color: var(--muted); margin: 0; }
+.status.error { color: var(--rec); }
+.keys { font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+kbd { font-family: var(--mono); font-size: 0.78rem; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel); }
+
+details.tips { padding: 14px 18px; }
+details.tips summary { cursor: pointer; font-weight: 600; }
+details.tips ul { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 4px; color: var(--muted); max-width: 70ch; }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .list { max-height: 220px; }
+  .stage { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Tamlish Voice Recorder</h1>
+      <p class="sub">Gold test set for local-voice-research: 30 Tamlish + 10 English sentences, saved as 16 kHz mono WAV.</p>
+    </div>
+    <div class="head-right">
+      <div class="progress">
+        <span class="progress-label" id="progress-label">0 of 40 recorded</span>
+        <div class="bar"><span id="progress-bar"></span></div>
+      </div>
+      <button class="primary" id="zip-btn" disabled>Download all as ZIP</button>
+    </div>
+  </header>
+
+  <details class="tips panel" id="tips">
+    <summary>Before you start (1 minute)</summary>
+    <ul>
+      <li>Use Chrome. The first time you press Record, allow microphone access.</li>
+      <li>Quiet room, laptop on a table, about an arm's length from you. Keep the same position for all 40 clips.</li>
+      <li>Read each sentence naturally, at normal speed, the way you would talk to your phone. Don't over-pronounce the English words.</li>
+      <li>Leave about one second of silence before you speak and after you finish, then stop.</li>
+      <li>Listen back. If you stumbled, press Record again to replace the take.</li>
+      <li>Clips are kept in this browser if you close the tab, but download the ZIP as soon as you finish.</li>
+    </ul>
+  </details>
+
+  <div class="layout">
+    <nav class="list panel" id="list" aria-label="Clips"></nav>
+
+    <main class="stage panel">
+      <div class="meta">
+        <span class="chip-id" id="cur-id">ta_01</span>
+        <span id="cur-group">Tamlish · light mixing</span>
+        <span id="cur-pos">Clip 1 of 40</span>
+      </div>
+
+      <p class="sentence" id="cur-text" lang="ta"></p>
+
+      <div class="controls">
+        <button class="rec-btn" id="rec-btn">Record</button>
+        <button id="prev-btn">Previous</button>
+        <button id="next-btn">Next</button>
+        <span class="spacer"></span>
+      </div>
+
+      <div class="meter-row">
+        <span>Mic level</span>
+        <div class="meter" id="meter"><span></span></div>
+        <span class="timer" id="timer">0.0 s</span>
+      </div>
+
+      <div class="take" id="take" hidden>
+        <audio id="player" controls preload="auto"></audio>
+        <div class="take-meta" id="take-meta"></div>
+      </div>
+
+      <p class="status" id="status">Press Record (or the space bar) to record this sentence.</p>
+
+      <div class="keys">
+        <span><kbd>Space</kbd> record / stop</span>
+        <span><kbd>P</kbd> play take</span>
+        <span><kbd>←</kbd> <kbd>→</kbd> previous / next</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ---- pure:start (WAV + ZIP helpers, no browser APIs) ----
+function encodeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buffer);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, samples.length * 2, true);
+  let o = 44;
+  for (let i = 0; i < samples.length; i++, o += 2) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Uint8Array(buffer);
+}
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(u8) {
+  let c = 0xffffffff;
+  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// Uncompressed ("stored") ZIP: WAV audio barely compresses, so this keeps it simple and dependency-free.
+function makeZipParts(files, now) {
+  const enc = new TextEncoder();
+  const d = now || new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const parts = [], central = [];
+  let offset = 0, centralSize = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, crc, true);
+    h.setUint32(18, size, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint16(10, 0, true); c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, crc, true);
+    c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true);
+    c.setUint16(30, 0, true); c.setUint16(32, 0, true); c.setUint16(34, 0, true); c.setUint16(36, 0, true);
+    c.setUint32(38, 0, true); c.setUint32(42, offset, true);
+    central.push(new Uint8Array(c.buffer), name);
+    centralSize += 46 + name.length;
+    offset += 30 + name.length + size;
+  }
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(4, 0, true); e.setUint16(6, 0, true);
+  e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, centralSize, true); e.setUint32(16, offset, true); e.setUint16(20, 0, true);
+  return [...parts, ...central, new Uint8Array(e.buffer)];
+}
+
+function csvCell(s) { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+
+function analyse(samples, sampleRate) {
+  let peak = 0;
+  for (let i = 0; i < samples.length; i++) { const a = Math.abs(samples[i]); if (a > peak) peak = a; }
+  const duration = samples.length / sampleRate;
+  const flags = [];
+  if (duration < 1.0) flags.push("Very short: did the sentence get cut off?");
+  if (peak >= 0.98) flags.push("Clipping: sit a little further from the mic");
+  else if (peak < 0.04) flags.push("Very quiet: sit closer or speak up");
+  return { peak, duration, flags };
+}
+// ---- pure:end ----
+
+const SENTENCES = [
+  { id: "ta_01", group: "Tamlish · light mixing", lang: "ta", text: "நாளைக்கு meeting இருக்கா?" },
+  { id: "ta_02", group: "Tamlish · light mixing", lang: "ta", text: "இன்னைக்கு சாயங்காலம் rain வருமா?" },
+  { id: "ta_03", group: "Tamlish · light mixing", lang: "ta", text: "அம்மாவுக்கு ஒரு call போடு." },
+  { id: "ta_04", group: "Tamlish · light mixing", lang: "ta", text: "என் phone எங்க வச்சேன்னு தெரியல." },
+  { id: "ta_05", group: "Tamlish · light mixing", lang: "ta", text: "சாப்பாடு order பண்ணலாமா?" },
+  { id: "ta_06", group: "Tamlish · light mixing", lang: "ta", text: "நாளைக்கு காலையில alarm வை." },
+  { id: "ta_07", group: "Tamlish · light mixing", lang: "ta", text: "பக்கத்துல ஏதாவது hospital இருக்கா?" },
+  { id: "ta_08", group: "Tamlish · light mixing", lang: "ta", text: "இந்த மாசம் bill எவ்வளவு வந்திருக்கு?" },
+  { id: "ta_09", group: "Tamlish · light mixing", lang: "ta", text: "ராத்திரி பத்து மணிக்கு reminder வை." },
+  { id: "ta_10", group: "Tamlish · light mixing", lang: "ta", text: "வீட்டுக்கு போற வழியில traffic அதிகமா இருக்கா?" },
+  { id: "ta_11", group: "Tamlish · medium mixing", lang: "ta", text: "என் account-ல balance check பண்ணணும்." },
+  { id: "ta_12", group: "Tamlish · medium mixing", lang: "ta", text: "நாளைக்கு doctor appointment book பண்ணு." },
+  { id: "ta_13", group: "Tamlish · medium mixing", lang: "ta", text: "Amazon-ல order பண்ணது எப்ப deliver ஆகும்?" },
+  { id: "ta_14", group: "Tamlish · medium mixing", lang: "ta", text: "Office-க்கு போக cab எவ்வளவு நேரத்துல வரும்?" },
+  { id: "ta_15", group: "Tamlish · medium mixing", lang: "ta", text: "என் train ticket confirm ஆயிடுச்சா?" },
+  { id: "ta_16", group: "Tamlish · medium mixing", lang: "ta", text: "இந்த photo-வ அப்பாவுக்கு WhatsApp-ல அனுப்பு." },
+  { id: "ta_17", group: "Tamlish · medium mixing", lang: "ta", text: "Internet ரொம்ப slow-ஆ இருக்கு, complaint பண்ணணும்." },
+  { id: "ta_18", group: "Tamlish · medium mixing", lang: "ta", text: "இன்னைக்கு evening gym-க்கு போகணும், ஞாபகப்படுத்து." },
+  { id: "ta_19", group: "Tamlish · medium mixing", lang: "ta", text: "Credit card bill கட்ட last date எப்போ?" },
+  { id: "ta_20", group: "Tamlish · medium mixing", lang: "ta", text: "அந்த restaurant-ல table reserve பண்ண முடியுமா?" },
+  { id: "ta_21", group: "Tamlish · heavy mixing", lang: "ta", text: "Tomorrow morning flight-க்கு cab book பண்ணு, seven o'clock-க்குள்ள வரணும்." },
+  { id: "ta_22", group: "Tamlish · heavy mixing", lang: "ta", text: "Weekend-ல family-ஓட trip plan பண்றோம், nearby hill station suggest பண்ணு." },
+  { id: "ta_23", group: "Tamlish · heavy mixing", lang: "ta", text: "Last month electricity bill ரொம்ப high-ஆ வந்திருக்கு, details காட்டு." },
+  { id: "ta_24", group: "Tamlish · heavy mixing", lang: "ta", text: "Meeting postpone ஆயிடுச்சுன்னு team-க்கு message அனுப்பு." },
+  { id: "ta_25", group: "Tamlish · heavy mixing", lang: "ta", text: "என் laptop battery fast-ஆ drain ஆகுது, என்ன problem-ஆ இருக்கும்?" },
+  { id: "ta_26", group: "Tamlish · heavy mixing", lang: "ta", text: "Online payment fail ஆயிடுச்சு, but amount debit ஆயிடுச்சு." },
+  { id: "ta_27", group: "Tamlish · heavy mixing", lang: "ta", text: "Next week Monday leave apply பண்ணணும், manager-க்கு mail அனுப்பு." },
+  { id: "ta_28", group: "Tamlish · heavy mixing", lang: "ta", text: "Swiggy order cancel பண்ணு, delivery time ரொம்ப late-ஆ காட்டுது." },
+  { id: "ta_29", group: "Tamlish · heavy mixing", lang: "ta", text: "Kids-க்கு online class link share பண்ணு, ten minutes-ல start ஆகும்." },
+  { id: "ta_30", group: "Tamlish · heavy mixing", lang: "ta", text: "Gas cylinder booking status check பண்ணி, delivery date சொல்லு." },
+  { id: "en_01", group: "English · stress", lang: "en", text: "Transfer ₹2,499 to Karthikeyan on 15th August." },
+  { id: "en_02", group: "English · stress", lang: "en", text: "Book a train from Chennai Egmore to Tiruchirappalli for 3rd December." },
+  { id: "en_03", group: "English · stress", lang: "en", text: "Call 98401 23456 and ask for Mr. Subramanian." },
+  { id: "en_04", group: "English · stress", lang: "en", text: "My complaint reference number is TN-4471-B, check the status." },
+  { id: "en_05", group: "English · stress", lang: "en", text: "Set a reminder for 7:45 PM to pay the LIC premium of ₹12,350." },
+  { id: "en_06", group: "English · stress", lang: "en", text: "How far is Thiruvananthapuram from Kanyakumari by road?" },
+  { id: "en_07", group: "English · stress", lang: "en", text: "Schedule a meeting with Priya Venkataraman at 10:30 AM on 2nd November." },
+  { id: "en_08", group: "English · stress", lang: "en", text: "Send ₹1.5 lakh to the HDFC account ending 4421." },
+  { id: "en_09", group: "English · stress", lang: "en", text: "What is the weather in Coimbatore for the next 3 days?" },
+  { id: "en_10", group: "English · stress", lang: "en", text: "Order 2 kg of tomatoes and 500 grams of paneer from BigBasket." }
+];
+
+const TARGET_RATE = 16000;
+const MAX_SECONDS = 30;
+const clips = {};          // id -> { wav: Uint8Array, url, duration, peak, flags, recordedAt, deviceRate }
+let index = 0;
+let audioCtx = null, stream = null, processor = null, source = null;
+let recording = false, chunks = [], startedAt = 0, timerId = null;
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  list: $("list"), id: $("cur-id"), group: $("cur-group"), pos: $("cur-pos"), text: $("cur-text"),
+  rec: $("rec-btn"), prev: $("prev-btn"), next: $("next-btn"), meter: $("meter"), timer: $("timer"),
+  take: $("take"), player: $("player"), takeMeta: $("take-meta"), status: $("status"),
+  zip: $("zip-btn"), progLabel: $("progress-label"), progBar: $("progress-bar")
+};
+
+// ---- storage: keep takes across a closed tab (best effort) ----
+let dbPromise = null;
+function idb() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      try {
+        const r = indexedDB.open("tamlish-recorder", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("clips", { keyPath: "id" });
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      } catch (e) { reject(e); }
+    });
+  }
+  return dbPromise;
+}
+async function storeClip(id, c) {
+  try {
+    const db = await idb();
+    await new Promise((res, rej) => {
+      const tx = db.transaction("clips", "readwrite");
+      tx.objectStore("clips").put({ id, wav: c.wav, duration: c.duration, peak: c.peak, flags: c.flags, recordedAt: c.recordedAt, deviceRate: c.deviceRate });
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  } catch (e) { /* storage unavailable: takes still live in memory until the tab closes */ }
+}
+async function loadStored() {
+  try {
+    const db = await idb();
+    const rows = await new Promise((res, rej) => {
+      const q = db.transaction("clips").objectStore("clips").getAll();
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+    });
+    for (const r of rows) {
+      if (!SENTENCES.some((s) => s.id === r.id)) continue;
+      clips[r.id] = { ...r, url: URL.createObjectURL(new Blob([r.wav], { type: "audio/wav" })) };
+    }
+  } catch (e) { /* no stored takes */ }
+}
+
+// ---- rendering ----
+function renderList() {
+  els.list.textContent = "";
+  let lastGroup = "";
+  SENTENCES.forEach((s, i) => {
+    if (s.group !== lastGroup) {
+      const g = document.createElement("div");
+      g.className = "group-label"; g.textContent = s.group;
+      els.list.appendChild(g); lastGroup = s.group;
+    }
+    const b = document.createElement("button");
+    b.className = "item"; b.type = "button";
+    b.setAttribute("aria-current", i === index ? "true" : "false");
+    const c = clips[s.id];
+    const dot = document.createElement("span");
+    dot.className = "dot" + (c ? (c.flags.length ? " flag" : " done") : "");
+    dot.title = c ? (c.flags.length ? "Recorded, check the warning" : "Recorded") : "Not recorded yet";
+    const idEl = document.createElement("span"); idEl.className = "item-id"; idEl.textContent = s.id;
+    const tx = document.createElement("span"); tx.className = "item-text"; tx.textContent = s.text; tx.lang = s.lang;
+    b.append(dot, idEl, tx);
+    b.addEventListener("click", () => { if (!recording) go(i); });
+    els.list.appendChild(b);
+  });
+}
+
+function renderProgress() {
+  const n = Object.keys(clips).length;
+  els.progLabel.textContent = `${n} of ${SENTENCES.length} recorded`;
+  els.progBar.style.width = (n / SENTENCES.length * 100) + "%";
+  els.zip.disabled = n === 0 || recording;
+}
+
+function renderCurrent() {
+  const s = SENTENCES[index];
+  els.id.textContent = s.id;
+  els.group.textContent = s.group;
+  els.pos.textContent = `Clip ${index + 1} of ${SENTENCES.length}`;
+  els.text.textContent = s.text;
+  els.text.lang = s.lang;
+  els.prev.disabled = index === 0 || recording;
+  els.next.disabled = index === SENTENCES.length - 1 || recording;
+  const c = clips[s.id];
+  if (c) {
+    els.take.hidden = false;
+    els.player.src = c.url;
+    els.takeMeta.textContent = "";
+    const info = document.createElement("span");
+    info.textContent = `${c.duration.toFixed(1)} s · peak ${(c.peak * 100).toFixed(0)}%`;
+    els.takeMeta.appendChild(info);
+    if (c.flags.length) {
+      c.flags.forEach((f) => { const ch = document.createElement("span"); ch.className = "flag-chip"; ch.textContent = f; els.takeMeta.appendChild(ch); });
+    } else {
+      const ok = document.createElement("span"); ok.className = "ok-chip"; ok.textContent = "Level looks good"; els.takeMeta.appendChild(ok);
+    }
+    els.rec.textContent = "Re-record";
+  } else {
+    els.take.hidden = true;
+    els.player.removeAttribute("src");
+    els.rec.textContent = "Record";
+  }
+}
+
+function render() { renderList(); renderProgress(); renderCurrent(); }
+function setStatus(msg, isError) { els.status.textContent = msg; els.status.classList.toggle("error", !!isError); }
+function go(i) {
+  index = Math.max(0, Math.min(SENTENCES.length - 1, i));
+  render();
+  const cur = els.list.querySelector('[aria-current="true"]');
+  if (cur) cur.scrollIntoView({ block: "nearest" });
+  setStatus(clips[SENTENCES[index].id] ? "Listen back, or press Record to replace this take." : "Press Record (or the space bar) to record this sentence.");
+}
+
+// ---- microphone ----
+async function openMic() {
+  if (audioCtx) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error("This browser cannot record here. Open the file in Chrome.");
+  }
+  stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+  });
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  source = audioCtx.createMediaStreamSource(stream);
+  processor = audioCtx.createScriptProcessor(4096, 1, 1);
+  processor.onaudioprocess = (e) => {
+    const input = e.inputBuffer.getChannelData(0);
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+    const rms = Math.sqrt(sum / input.length);
+    const level = Math.min(1, rms * 5);
+    els.meter.firstElementChild.style.width = (level * 100) + "%";
+    els.meter.classList.toggle("hot", rms > 0.3);
+    if (recording) chunks.push(new Float32Array(input));
+  };
+  source.connect(processor);
+  processor.connect(audioCtx.destination);
+}
+
+async function resampleTo16k(samples, fromRate) {
+  if (fromRate === TARGET_RATE) return samples;
+  const outLen = Math.ceil(samples.length * TARGET_RATE / fromRate);
+  const off = new OfflineAudioContext(1, outLen, TARGET_RATE);
+  const buf = off.createBuffer(1, samples.length, fromRate);
+  buf.copyToChannel(samples, 0);
+  const src = off.createBufferSource();
+  src.buffer = buf; src.connect(off.destination); src.start();
+  const rendered = await off.startRendering();
+  return rendered.getChannelData(0);
+}
+
+async function startRecording() {
+  try {
+    await openMic();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+  } catch (e) {
+    const denied = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
+    setStatus(denied
+      ? "Microphone access was blocked. Click the camera/mic icon in Chrome's address bar, allow the microphone, then press Record again."
+      : (e.message || "Could not open the microphone."), true);
+    return;
+  }
+  chunks = [];
+  recording = true;
+  startedAt = performance.now();
+  els.rec.classList.add("recording");
+  els.rec.textContent = "Stop";
+  els.player.pause();
+  render(); els.rec.textContent = "Stop";
+  setStatus("Recording… wait one second, read the sentence, wait one second, then stop.");
+  timerId = setInterval(() => {
+    const t = (performance.now() - startedAt) / 1000;
+    els.timer.textContent = t.toFixed(1) + " s";
+    if (t >= MAX_SECONDS) stopRecording();
+  }, 100);
+}
+
+async function stopRecording() {
+  if (!recording) return;
+  recording = false;
+  clearInterval(timerId);
+  els.rec.classList.remove("recording");
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const raw = new Float32Array(total);
+  let o = 0; for (const c of chunks) { raw.set(c, o); o += c.length; }
+  chunks = [];
+  if (total === 0) { render(); setStatus("Nothing was captured. Check the mic level bar moves when you speak.", true); return; }
+  setStatus("Saving take…");
+  const s16 = await resampleTo16k(raw, audioCtx.sampleRate);
+  const a = analyse(s16, TARGET_RATE);
+  const wav = encodeWav(s16, TARGET_RATE);
+  const id = SENTENCES[index].id;
+  if (clips[id] && clips[id].url) URL.revokeObjectURL(clips[id].url);
+  clips[id] = { wav, url: URL.createObjectURL(new Blob([wav], { type: "audio/wav" })), duration: a.duration, peak: a.peak, flags: a.flags, recordedAt: new Date().toISOString(), deviceRate: audioCtx.sampleRate };
+  storeClip(id, clips[id]);
+  render();
+  setStatus(a.flags.length
+    ? "Saved, but check the warning below. Press Record to try again, or → to move on."
+    : "Saved. Listen back with P, then press → for the next sentence.");
+}
+
+// ---- export ----
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function buildZip() {
+  const enc = new TextEncoder();
+  const files = [];
+  const manifest = [];
+  const csv = ["id,group,text,audio_file,duration_s,peak,sample_rate,device_sample_rate,recorded_at,warnings"];
+  for (const s of SENTENCES) {
+    const c = clips[s.id];
+    if (!c) continue;
+    files.push({ name: `recordings/${s.id}.wav`, data: c.wav });
+    manifest.push(JSON.stringify({ audio_filepath: `${s.id}.wav`, duration: +c.duration.toFixed(3), text: s.text, id: s.id, group: s.group }));
+    csv.push([s.id, s.group, s.text, `${s.id}.wav`, c.duration.toFixed(3), c.peak.toFixed(3), TARGET_RATE, c.deviceRate || "", c.recordedAt, c.flags.join(" | ")].map(csvCell).join(","));
+  }
+  files.push({ name: "recordings/manifest.jsonl", data: enc.encode(manifest.join("\n") + "\n") });
+  files.push({ name: "recordings/metadata.csv", data: enc.encode("﻿" + csv.join("\n") + "\n") });
+  return new Blob(makeZipParts(files), { type: "application/zip" });
+}
+
+els.zip.addEventListener("click", () => {
+  const n = Object.keys(clips).length;
+  downloadBlob(buildZip(), "tamlish_recordings.zip");
+  setStatus(n === SENTENCES.length
+    ? "Downloaded all 40 clips. Send the ZIP in the chat or add it to the project."
+    : `Downloaded ${n} of ${SENTENCES.length} clips. You can keep recording and download again later.`);
+});
+
+// ---- controls ----
+els.rec.addEventListener("click", () => recording ? stopRecording() : startRecording());
+els.prev.addEventListener("click", () => go(index - 1));
+els.next.addEventListener("click", () => go(index + 1));
+document.addEventListener("keydown", (e) => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (e.code === "Space") { e.preventDefault(); recording ? stopRecording() : startRecording(); }
+  else if (e.key === "ArrowRight" && !recording) { e.preventDefault(); go(index + 1); }
+  else if (e.key === "ArrowLeft" && !recording) { e.preventDefault(); go(index - 1); }
+  else if ((e.key === "p" || e.key === "P") && !recording && clips[SENTENCES[index].id]) { e.preventDefault(); els.player.currentTime = 0; els.player.play(); }
+});
+
+(async () => {
+  render();
+  await loadStored();
+  const firstMissing = SENTENCES.findIndex((s) => !clips[s.id]);
+  go(firstMissing === -1 ? 0 : firstMissing);
+  if (Object.keys(clips).length) setStatus(`Restored ${Object.keys(clips).length} earlier takes from this browser. Continuing at the first missing clip.`);
+})();
+</script>
+</body>
+</html>
