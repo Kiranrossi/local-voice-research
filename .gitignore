@@ -1,0 +1,30 @@
+# Secrets: never commit tokens
+.env
+*.token
+hf_token*
+
+# Audio and large data (download or stream instead)
+data/audio/
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+
+# Model weights and caches
+models/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+.cache/
+
+# Python and notebooks
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# macOS
+.DS_Store
