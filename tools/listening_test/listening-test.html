@@ -1,0 +1,224 @@
+<title>Voice Listening Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: one centred card per step (intro, clip, done) - a quiet, focused listening booth */
+:root {
+  --bg: #f3f5f2;
+  --card: #ffffff;
+  --fg: #1b2420;
+  --muted: #5d6a64;
+  --line: #d9e0dc;
+  --accent: #1f6f50;
+  --accent-soft: #e2f0e9;
+  --accent-ink: #ffffff;
+  --sel: #1f6f50;
+  --display: "Source Serif 4", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111614; --card: #18201c; --fg: #e5ece8; --muted: #95a59d; --line: #2a3530;
+  --accent: #5fc79b; --accent-soft: #1d3329; --accent-ink: #0c1712; --sel: #5fc79b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111614; --card: #18201c; --fg: #e5ece8; --muted: #95a59d; --line: #2a3530;
+  --accent: #5fc79b; --accent-soft: #1d3329; --accent-ink: #0c1712; --sel: #5fc79b; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.55 var(--body); }
+.wrap { max-width: 640px; margin: 0 auto; padding-block: 32px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 28px; display: grid; gap: 20px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 1.9rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+label.field { display: grid; gap: 6px; font-weight: 700; }
+input[type=text] { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 10px 16px; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+.reads { font-size: .85rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.sentence { font-size: 1.15rem; font-weight: 700; }
+.play { display: inline-flex; align-items: center; gap: 10px; justify-self: start; padding: 12px 22px; border-radius: 999px; font-weight: 700; border-color: var(--accent); color: var(--accent); }
+.play::before { content: ""; width: 0; height: 0; border-left: 12px solid currentColor; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
+.play.playing::before { width: 12px; height: 14px; border: 0; background: linear-gradient(90deg, currentColor 35%, transparent 35% 65%, currentColor 65%); }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+legend { font-weight: 700; padding: 0; margin-bottom: 4px; }
+.scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.opt { display: grid; gap: 2px; justify-items: center; padding: 10px 4px; text-align: center; border-radius: 10px; }
+.opt b { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.opt small { font-size: .75rem; color: var(--muted); }
+.row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.opt[aria-pressed="true"] { border-color: var(--sel); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--sel); }
+.nav { display: flex; justify-content: space-between; gap: 12px; }
+.hint { font-size: .88rem; color: var(--muted); min-height: 1.3em; }
+textarea { width: 100%; min-height: 120px; font: 13px/1.4 ui-monospace, Menlo, monospace; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); resize: vertical; }
+@media (max-width: 420px) { .card { padding: 20px; } .opt small { font-size: .68rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <section class="card" id="intro">
+    <h1>Voice Listening Test</h1>
+    <p>You'll hear <strong>32 short clips</strong> of computer-generated voices reading sentences a voice assistant might say. For each clip, tell us how natural it sounds and whether it read every word correctly. It takes about 6 minutes.</p>
+    <ul>
+      <li>Use headphones or earphones if you can, in a quiet place.</li>
+      <li>Rate the <em>voice</em>, not the sentence. There are no right answers.</li>
+      <li>The voices are shuffled and unnamed, so you can't tell which system made which clip.</li>
+    </ul>
+    <label class="field" for="name">Your first name (optional)
+      <input type="text" id="name" autocomplete="given-name" maxlength="40" placeholder="e.g. Priya">
+    </label>
+    <button class="primary" id="start">Start listening</button>
+    <p class="hint" id="resume-hint"></p>
+  </section>
+
+  <section class="card" id="trial" hidden>
+    <div class="top"><span id="pos">Clip 1 of 32</span><span>about <span id="left">6</span> min left</span></div>
+    <div class="bar"><span id="bar"></span></div>
+    <div><p class="reads">The voice reads</p><p class="sentence" id="text"></p></div>
+    <button class="play" id="play">Play clip</button>
+    <audio id="audio" preload="auto"></audio>
+    <fieldset>
+      <legend>How natural does this voice sound?</legend>
+      <div class="scale" id="mos">
+        <button class="opt" data-v="1" aria-pressed="false"><b>1</b><small>Bad</small></button>
+        <button class="opt" data-v="2" aria-pressed="false"><b>2</b><small>Poor</small></button>
+        <button class="opt" data-v="3" aria-pressed="false"><b>3</b><small>Fair</small></button>
+        <button class="opt" data-v="4" aria-pressed="false"><b>4</b><small>Good</small></button>
+        <button class="opt" data-v="5" aria-pressed="false"><b>5</b><small>Excellent</small></button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Did it read every word correctly?</legend>
+      <div class="row3" id="acc">
+        <button class="opt" data-v="y" aria-pressed="false"><b>Yes</b></button>
+        <button class="opt" data-v="p" aria-pressed="false"><b>Mostly</b></button>
+        <button class="opt" data-v="n" aria-pressed="false"><b>No</b></button>
+      </div>
+    </fieldset>
+    <p class="hint" id="hint">Play the clip first.</p>
+    <div class="nav"><button id="back">Back</button><button class="primary" id="next" disabled>Next clip</button></div>
+  </section>
+
+  <section class="card" id="done" hidden>
+    <h2>Thank you, that's all 32.</h2>
+    <p>Please copy the code below and send it to <strong>Kiran on WhatsApp</strong>. It contains only your ratings and your first name.</p>
+    <textarea id="code" readonly aria-label="Your results code"></textarea>
+    <div class="nav"><button id="redo">Change an answer</button><button class="primary" id="copy">Copy code</button></div>
+    <p class="hint" id="copied"></p>
+  </section>
+</div>
+
+<script>
+const DATA = {"texts": {"g01": "Your order has been placed and will arrive by Friday evening.", "g03": "The weather today is mostly sunny, with a light breeze in the afternoon.", "g08": "The nearest pharmacy is two hundred metres away and is open until ten.", "g10": "Sorry, I didn't catch that. Could you please repeat it?", "en_01": "Transfer ₹2,499 to Karthikeyan on 15th August.", "en_02": "Book a train from Chennai Egmore to Tiruchirappalli for 3rd December.", "en_05": "Set a reminder for 7:45 PM to pay the LIC premium of ₹12,350.", "en_08": "Send ₹1.5 lakh to the HDFC account ending 4421."}, "clips": [{"id": "g01_m1", "sid": "g01", "m": "m1", "src": "audio/g01_m1.mp3"}, {"id": "g03_m1", "sid": "g03", "m": "m1", "src": "audio/g03_m1.mp3"}, {"id": "g08_m1", "sid": "g08", "m": "m1", "src": "audio/g08_m1.mp3"}, {"id": "g10_m1", "sid": "g10", "m": "m1", "src": "audio/g10_m1.mp3"}, {"id": "en_01_m1", "sid": "en_01", "m": "m1", "src": "audio/en_01_m1.mp3"}, {"id": "en_02_m1", "sid": "en_02", "m": "m1", "src": "audio/en_02_m1.mp3"}, {"id": "en_05_m1", "sid": "en_05", "m": "m1", "src": "audio/en_05_m1.mp3"}, {"id": "en_08_m1", "sid": "en_08", "m": "m1", "src": "audio/en_08_m1.mp3"}, {"id": "g01_m2", "sid": "g01", "m": "m2", "src": "audio/g01_m2.mp3"}, {"id": "g03_m2", "sid": "g03", "m": "m2", "src": "audio/g03_m2.mp3"}, {"id": "g08_m2", "sid": "g08", "m": "m2", "src": "audio/g08_m2.mp3"}, {"id": "g10_m2", "sid": "g10", "m": "m2", "src": "audio/g10_m2.mp3"}, {"id": "en_01_m2", "sid": "en_01", "m": "m2", "src": "audio/en_01_m2.mp3"}, {"id": "en_02_m2", "sid": "en_02", "m": "m2", "src": "audio/en_02_m2.mp3"}, {"id": "en_05_m2", "sid": "en_05", "m": "m2", "src": "audio/en_05_m2.mp3"}, {"id": "en_08_m2", "sid": "en_08", "m": "m2", "src": "audio/en_08_m2.mp3"}, {"id": "g01_m3", "sid": "g01", "m": "m3", "src": "audio/g01_m3.mp3"}, {"id": "g03_m3", "sid": "g03", "m": "m3", "src": "audio/g03_m3.mp3"}, {"id": "g08_m3", "sid": "g08", "m": "m3", "src": "audio/g08_m3.mp3"}, {"id": "g10_m3", "sid": "g10", "m": "m3", "src": "audio/g10_m3.mp3"}, {"id": "en_01_m3", "sid": "en_01", "m": "m3", "src": "audio/en_01_m3.mp3"}, {"id": "en_02_m3", "sid": "en_02", "m": "m3", "src": "audio/en_02_m3.mp3"}, {"id": "en_05_m3", "sid": "en_05", "m": "m3", "src": "audio/en_05_m3.mp3"}, {"id": "en_08_m3", "sid": "en_08", "m": "m3", "src": "audio/en_08_m3.mp3"}, {"id": "g01_m4", "sid": "g01", "m": "m4", "src": "audio/g01_m4.mp3"}, {"id": "g03_m4", "sid": "g03", "m": "m4", "src": "audio/g03_m4.mp3"}, {"id": "g08_m4", "sid": "g08", "m": "m4", "src": "audio/g08_m4.mp3"}, {"id": "g10_m4", "sid": "g10", "m": "m4", "src": "audio/g10_m4.mp3"}, {"id": "en_01_m4", "sid": "en_01", "m": "m4", "src": "audio/en_01_m4.mp3"}, {"id": "en_02_m4", "sid": "en_02", "m": "m4", "src": "audio/en_02_m4.mp3"}, {"id": "en_05_m4", "sid": "en_05", "m": "m4", "src": "audio/en_05_m4.mp3"}, {"id": "en_08_m4", "sid": "en_08", "m": "m4", "src": "audio/en_08_m4.mp3"}]};
+const KEY = "vlt1-state";
+const $ = (id) => document.getElementById(id);
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  // avoid the same sentence twice in a row, so listeners judge the voice rather than compare repeats
+  for (let i = 1; i < a.length; i++) {
+    if (a[i].sid === a[i - 1].sid) {
+      const k = a.findIndex((c, idx) => idx > i && c.sid !== a[i - 1].sid && (!a[idx + 1] || a[idx + 1].sid !== a[i].sid));
+      if (k > -1) [a[i], a[k]] = [a[k], a[i]];
+    }
+  }
+  return a;
+}
+
+function bestOrder() {  // retry until no sentence plays twice in a row
+  let a = shuffled(DATA.clips);
+  for (let t = 0; t < 200 && a.some((c, i) => i && c.sid === a[i - 1].sid); t++) a = shuffled(DATA.clips);
+  return a.map((c) => c.id);
+}
+let state = load() || { name: "", order: bestOrder(), i: 0, ans: {} };
+const byId = Object.fromEntries(DATA.clips.map((c) => [c.id, c]));
+let heard = false;
+
+function show(id) { ["intro", "trial", "done"].forEach((s) => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+
+function code() {
+  const parts = state.order.filter((id) => state.ans[id]).map((id) => `${id}=${state.ans[id].m}${state.ans[id].a}`);
+  const name = (state.name || "anon").replace(/[;|=,\s]+/g, "_");
+  return `VLT1;${name};${parts.length};${parts.join(",")}`;
+}
+
+function setPressed(group, v) {
+  group.querySelectorAll(".opt").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+}
+
+function renderTrial() {
+  const n = state.order.length, id = state.order[state.i], c = byId[id], a = state.ans[id] || {};
+  $("pos").textContent = `Clip ${state.i + 1} of ${n}`;
+  $("left").textContent = Math.max(1, Math.round((n - state.i) * 11 / 60));
+  $("bar").style.width = (state.i / n * 100) + "%";
+  $("text").textContent = DATA.texts[c.sid];
+  $("audio").src = c.src;
+  heard = !!state.ans[id];
+  setPressed($("mos"), a.m ? String(a.m) : "");
+  setPressed($("acc"), a.a || "");
+  $("back").disabled = state.i === 0;
+  $("play").classList.remove("playing"); $("play").textContent = "Play clip";
+  update();
+}
+
+function update() {
+  const id = state.order[state.i], a = state.ans[id] || {};
+  const ready = heard && a.m && a.a;
+  $("next").disabled = !ready;
+  $("next").textContent = state.i === state.order.length - 1 ? "Finish" : "Next clip";
+  $("hint").textContent = !heard ? "Play the clip first." : (!a.m || !a.a ? "Choose a rating and an answer to continue." : "");
+}
+
+function answer(field, v) {
+  const id = state.order[state.i];
+  state.ans[id] = Object.assign({}, state.ans[id], { [field]: v });
+  save(); setPressed(field === "m" ? $("mos") : $("acc"), String(v)); update();
+}
+
+$("mos").addEventListener("click", (e) => { const b = e.target.closest(".opt"); if (b) answer("m", Number(b.dataset.v)); });
+$("acc").addEventListener("click", (e) => { const b = e.target.closest(".opt"); if (b) answer("a", b.dataset.v); });
+
+const audio = $("audio");
+$("play").addEventListener("click", () => {
+  if (!audio.paused) { audio.pause(); return; }
+  audio.currentTime = 0;
+  audio.play().catch(() => { $("hint").textContent = "The clip didn't play. Check your volume and tap Play again."; });
+});
+audio.addEventListener("play", () => { $("play").classList.add("playing"); $("play").textContent = "Pause"; });
+audio.addEventListener("pause", () => { $("play").classList.remove("playing"); $("play").textContent = "Play again"; });
+audio.addEventListener("ended", () => { heard = true; $("play").classList.remove("playing"); $("play").textContent = "Play again"; update(); });
+
+$("next").addEventListener("click", () => {
+  if (state.i < state.order.length - 1) { state.i++; save(); renderTrial(); }
+  else { $("code").value = code(); save(); show("done"); }
+});
+$("back").addEventListener("click", () => { if (state.i > 0) { state.i--; save(); renderTrial(); } });
+$("redo").addEventListener("click", () => { state.i = state.order.length - 1; show("trial"); renderTrial(); });
+
+$("start").addEventListener("click", () => {
+  state.name = $("name").value.trim(); save(); show("trial"); renderTrial();
+});
+$("copy").addEventListener("click", () => {
+  const t = $("code");
+  navigator.clipboard.writeText(t.value).then(
+    () => { $("copied").textContent = "Copied. Paste it into WhatsApp and send it to Kiran."; },
+    () => { t.focus(); t.select(); $("copied").textContent = "Copying isn't allowed here. The code is selected: copy it with your keyboard or long-press."; });
+});
+
+$("name").value = state.name || "";
+const done = Object.keys(state.ans).length;
+if (done && done < state.order.length) $("resume-hint").textContent = `You've rated ${done} of ${state.order.length} clips. Start to continue where you left off.`;
+if (done === state.order.length && state.order.every((id) => state.ans[id] && state.ans[id].m && state.ans[id].a)) { $("code").value = code(); show("done"); }
+</script>
