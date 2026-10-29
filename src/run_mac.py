@@ -64,9 +64,13 @@ class MoonshineCPU:
 
 
 class ParakeetONNXCPU:
+    """ONNX Runtime picks CoreML on Macs by default; force the CPU provider for a true CPU-only test."""
+    def __init__(self, providers=("CPUExecutionProvider",)):
+        self.providers = list(providers)
+
     def load(self):
         import onnx_asr
-        self.m = onnx_asr.load_model("nemo-parakeet-tdt-0.6b-v2", quantization="int8")
+        self.m = onnx_asr.load_model("nemo-parakeet-tdt-0.6b-v2", quantization="int8", providers=self.providers)
 
     def transcribe(self, clip):
         out = self.m.recognize(clip["path"])
@@ -116,7 +120,9 @@ MODELS = {
     "faster-whisper-turbo-vad-cpu": (lambda: FasterWhisperCPU(vad=True), "whisper-large-v3-turbo+vad", "cpu", "int8", "faster-whisper"),
     "moonshine-medium-cpu": (lambda: MoonshineCPU("medium"), "moonshine-streaming-medium", "cpu", "fp32", "transformers"),
     "moonshine-tiny-cpu": (lambda: MoonshineCPU("tiny"), "moonshine-streaming-tiny", "cpu", "fp32", "transformers"),
-    "parakeet-onnx-cpu": (lambda: ParakeetONNXCPU(), "parakeet-tdt-0.6b-v2", "cpu", "int8", "onnx-asr"),
+    "parakeet-onnx-cpu": (lambda: ParakeetONNXCPU(), "parakeet-tdt-0.6b-v2", "cpu", "int8", "onnx-asr (CPU provider)"),
+    "parakeet-onnx-coreml": (lambda: ParakeetONNXCPU(("CoreMLExecutionProvider", "CPUExecutionProvider")),
+                             "parakeet-tdt-0.6b-v2", "apple_coreml", "int8", "onnx-asr (CoreML + CPU)"),
     "whisper-mlx": (lambda: WhisperMLX(), "whisper-large-v3-turbo", "apple_silicon", "fp16", "mlx-whisper"),
     "parakeet-mlx": (lambda: ParakeetMLX(), "parakeet-tdt-0.6b-v2", "apple_silicon", "bf16", "parakeet-mlx"),
 }
