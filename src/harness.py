@@ -139,9 +139,17 @@ def load_audio(path: str) -> np.ndarray:
     audio, sr = sf.read(path, dtype="float32", always_2d=True)
     audio = audio.mean(axis=1)
     if sr != SR:
-        import librosa
+        try:
+            import librosa
 
-        audio = librosa.resample(audio, orig_sr=sr, target_sr=SR)
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=SR)
+        except ImportError:  # light fallback when librosa is not installed
+            from math import gcd
+
+            from scipy.signal import resample_poly
+
+            g = gcd(int(sr), SR)
+            audio = resample_poly(audio, SR // g, int(sr) // g)
     return np.ascontiguousarray(audio, dtype=np.float32)
 
 
