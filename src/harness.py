@@ -245,7 +245,10 @@ def evaluate(model, model_name: str, manifest: str, test_set: str, results_dir: 
     load_time = time.perf_counter() - t0
 
     for c in clips[:warmup]:  # warm-up runs are not timed or scored
-        model.transcribe(c)
+        try:
+            model.transcribe(c)
+        except Exception as e:
+            print(f"  warm-up failed on {c.get('id')}: {type(e).__name__}: {e}"[:200])
 
     outputs, latencies = [], []
     total_audio, total_proc = 0.0, 0.0
