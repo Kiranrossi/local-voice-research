@@ -6,6 +6,7 @@ and saves per-clip outputs (reference, model output, latency) to `outputs/<run_i
 | Folder | Hardware | Contents |
 |--------|----------|----------|
 | `colab_t4/` | Google Colab, NVIDIA Tesla T4 | English STT: LibriSpeech, Svarah, own recordings, no-speech clips |
+| `mac_m2/` | MacBook Air M2, 8 GB (CPU-only, Apple GPU via MLX, CoreML) | English STT on 50 Svarah clips, own recordings, no-speech clips; Kokoro TTS on CPU |
 
 - `results.csv`: raw results, scored at run time
 - `results_scored.csv`: all runs re-scored with the final normaliser (`whisper_english+indian_v2`), latest run per model and test set only. **Use this file for the report.**
@@ -15,3 +16,5 @@ Scoring v2 adds Indian-English formatting rules on top of Whisper's English norm
 applied identically to references and every model. See `src/harness.py`.
 
 Svarah transcripts are from AI4Bharat's Svarah dataset (CC-BY-4.0).
+
+Note: the first Parakeet ONNX run on the Mac silently used CoreML for part of the model (ONNX Runtime's default on macOS). It is kept, relabelled `apple_coreml`; the true CPU-only run forces `CPUExecutionProvider`.
