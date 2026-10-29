@@ -52,15 +52,43 @@ try:  # Whisper's English normaliser (same family the Open ASR Leaderboard uses)
     from whisper_normalizer.english import EnglishTextNormalizer as _ETN
 
     _english = _ETN()
-    NORMALISER_NAME = "whisper_english"
+    _BASE_NAME = "whisper_english"
 
-    def normalise_en(text: str) -> str:
+    def _base(text: str) -> str:
         return " ".join(_english(text or "").split())
 except Exception:  # pragma: no cover - fallback when the package is missing
-    NORMALISER_NAME = "basic"
+    _BASE_NAME = "basic"
 
-    def normalise_en(text: str) -> str:
+    def _base(text: str) -> str:
         return _basic_normalise(text or "")
+
+
+# Indian-English formatting rules (scoring v2). They remove differences in *how* a
+# correct answer is written, applied identically to references and every model:
+#   ₹ / Rs / Rs. / INR  -> "rupees"          (currency word vs symbol)
+#   7:45, 7.45, 7 45     -> 745              (digit grouping and separators)
+#   t n, p m             -> tn, pm           (spelled-out letters)
+_currency_pre = re.compile(r"₹\s*")
+_currency_post = re.compile(r"\b(?:rs|inr)\b")
+_digit_join = re.compile(r"(?<=\d)[\s.:,](?=\d)")
+_letters = re.compile(r"\b([a-z])(?: ([a-z]))+\b")
+NORMALISER_NAME = f"{_BASE_NAME}+indian_v2"
+
+
+def _join_letters(m: re.Match) -> str:
+    return m.group(0).replace(" ", "")
+
+
+def normalise_en(text: str) -> str:
+    text = _currency_pre.sub(" rupees ", text or "")
+    text = _base(text)
+    text = _currency_post.sub("rupees", text)
+    text = re.sub(r"\brupees(?: rupees)+\b", "rupees", text)
+    prev = None
+    while prev != text:  # repeat so 98401 23 456 fully joins
+        prev, text = text, _digit_join.sub("", text)
+    text = _letters.sub(_join_letters, text)
+    return " ".join(text.split())
 
 
 # ---------------------------------------------------------------- error rates
@@ -341,3 +369,54 @@ def worst_examples(results_dir: str, run_id: str, n: int = 5) -> None:
     rows = [r for r in rows if "word_errors" in r]
     for r in sorted(rows, key=lambda r: -r["word_errors"])[:n]:
         print(f"[{r['id']}] errors={r['word_errors']}\n  REF: {r['ref_norm']}\n  HYP: {r['hyp_norm']}\n")
+
+
+# ---------------------------------------------------------------- re-scoring saved outputs
+
+def rescore_all(results_dir: str, normaliser=None, out_name: str = "results_scored.csv") -> "list[dict]":
+    """Re-computes accuracy for every saved run with the current normaliser.
+
+    Timing and memory columns are copied from results.csv; only the accuracy columns change.
+    Writes results_scored.csv next to results.csv and returns its rows. Only the latest run of
+    each (model, test_set, hardware_profile) is kept, so crashed or superseded runs drop out.
+    """
+    normaliser = normaliser or normalise_en
+    out = Path(results_dir)
+    with open(out / "results.csv", encoding="utf-8") as f:
+        raw = list(csv.DictReader(f))
+    latest = {}
+    for r in raw:  # later rows win
+        latest[(r["model"], r["test_set"], r["hardware_profile"], r.get("task", ""))] = r
+    rows = []
+    for r in latest.values():
+        path = out / "outputs" / f"{r['run_id']}.jsonl"
+        if not path.exists():
+            continue
+        outs = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        is_noise = all(not o["ref"].strip() for o in outs)
+        w_err, w_len, c_err, c_len, halluc = [], [], [], [], 0
+        for o in outs:
+            ref, hyp = normaliser(o["ref"]), normaliser(o["hyp"])
+            if is_noise:
+                halluc += bool(hyp)
+                continue
+            if not ref:
+                continue
+            we, wl, ce, cl = utterance_errors(ref, hyp)
+            w_err.append(we); w_len.append(wl); c_err.append(ce); c_len.append(cl)
+        r = dict(r)
+        if is_noise:
+            r["hallucination_rate"] = round(halluc / len(outs), 3)
+        else:
+            lo, hi = bootstrap_ci(w_err, w_len)
+            r.update(wer=round(corpus_rate(w_err, w_len), 4), wer_ci_low=round(lo, 4),
+                     wer_ci_high=round(hi, 4), cer=round(corpus_rate(c_err, c_len), 4))
+        r["notes"] = re.sub(r"normaliser=[^;]*", f"normaliser={NORMALISER_NAME}", r.get("notes", ""))
+        rows.append(r)
+    rows.sort(key=lambda r: (r["test_set"], r["model"]))
+    with open(out / out_name, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=RESULTS_COLUMNS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    print(f"Re-scored {len(rows)} runs with {NORMALISER_NAME} -> {out / out_name}")
+    return rows
