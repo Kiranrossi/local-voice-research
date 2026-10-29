@@ -1,0 +1,10 @@
+{"id": "noise_00", "ref": "", "hyp": "", "duration": 3.0, "latency_s": 0.2153, "error": "", "kind": "silence", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_01", "ref": "", "hyp": "", "duration": 3.5, "latency_s": 0.7612, "error": "", "kind": "silence", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_02", "ref": "", "hyp": "", "duration": 4.0, "latency_s": 0.8919, "error": "", "kind": "silence", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_03", "ref": "", "hyp": "", "duration": 4.5, "latency_s": 0.9886, "error": "", "kind": "silence", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_04", "ref": "", "hyp": "", "duration": 5.0, "latency_s": 1.0043, "error": "", "kind": "silence", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_05", "ref": "", "hyp": "", "duration": 5.5, "latency_s": 1.0806, "error": "", "kind": "noise", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_06", "ref": "", "hyp": "", "duration": 6.0, "latency_s": 1.1531, "error": "", "kind": "noise", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_07", "ref": "", "hyp": "", "duration": 6.5, "latency_s": 1.3052, "error": "", "kind": "noise", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_08", "ref": "", "hyp": "", "duration": 7.0, "latency_s": 1.3547, "error": "", "kind": "noise", "ref_norm": "", "hyp_norm": ""}
+{"id": "noise_09", "ref": "", "hyp": "", "duration": 7.5, "latency_s": 1.4071, "error": "", "kind": "noise", "ref_norm": "", "hyp_norm": ""}
