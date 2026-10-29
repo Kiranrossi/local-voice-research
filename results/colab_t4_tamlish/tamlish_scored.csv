@@ -1,0 +1,11 @@
+model,variant,test_set,n,strict_wer,mer,phon_cer,en_recall,wrong_language,phon_cer_light,phon_cer_medium,phon_cer_heavy,latency_median_s,peak_mem_gb,run_id
+indicconformer-600m,"ta, rnnt",indicvoices_ta,30,0.2943,0.0904,0.0773,0.0,0.0,,,,0.2132,0.02,20261029-201446_indicconformer-600m_indicvoices_ta
+whisper-large-v3,language=ta,indicvoices_ta,30,0.8138,0.4654,0.425,0.0,0.0,,,,4.9297,4.73,20261029-195522_whisper-large-v3_indicvoices_ta
+whisper-large-v3-turbo,language=auto,indicvoices_ta,30,2.1195,0.8939,1.1728,0.0,0.6,,,,0.8792,1.87,20261029-194718_whisper-large-v3-turbo_indicvoices_ta
+whisper-large-v3-turbo,language=ta,indicvoices_ta,30,2.0575,1.0561,0.8211,0.0,0.1,,,,1.2868,1.87,20261029-194614_whisper-large-v3-turbo_indicvoices_ta
+whisper-tamil-medium,"vasista22, language=ta",indicvoices_ta,30,0.5747,0.2551,0.2233,0.0,0.0,,,,3.1887,2.43,20261029-200428_whisper-tamil-medium_indicvoices_ta
+indicconformer-600m,"ta, rnnt",own_ta,30,0.6394,1.039,0.0332,0.952,0.0,0.0229,0.037,0.0353,0.175,0.01,20261029-201438_indicconformer-600m_own_ta
+whisper-large-v3,language=ta,own_ta,30,0.4615,0.6199,0.0498,0.904,0.0,0.0763,0.0212,0.0565,2.0488,4.43,20261029-195227_whisper-large-v3_own_ta
+whisper-large-v3-turbo,language=auto,own_ta,30,0.649,0.8382,0.1177,0.827,0.033,0.1221,0.1429,0.0989,0.6774,1.84,20261029-194637_whisper-large-v3-turbo_own_ta
+whisper-large-v3-turbo,language=ta,own_ta,30,0.6394,0.8194,0.1012,0.827,0.0,0.0458,0.1429,0.0989,0.5119,1.84,20261029-194517_whisper-large-v3-turbo_own_ta
+whisper-tamil-medium,"vasista22, language=ta",own_ta,30,0.6442,0.9754,0.0531,0.865,0.0,0.0229,0.0265,0.0848,1.676,2.35,20261029-200242_whisper-tamil-medium_own_ta
