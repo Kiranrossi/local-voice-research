@@ -160,7 +160,10 @@ def read_manifest(path: str) -> list[dict]:
             if line.strip():
                 r = json.loads(line)
                 p = Path(r["audio_filepath"])
-                r["audio_filepath"] = str(p if p.is_absolute() else base / p)
+                p = p if p.is_absolute() else base / p
+                if not p.exists() and (base / p.name).exists():  # manifest moved to another machine
+                    p = base / p.name
+                r["audio_filepath"] = str(p)
                 rows.append(r)
     return rows
 
@@ -256,7 +259,8 @@ def _peak_mem_gb() -> float:
 def evaluate(model, model_name: str, manifest: str, test_set: str, results_dir: str,
              variant: str = "", quantization: str = "fp16", runtime: str = "transformers",
              objective: str = "obj1", task: str = "stt", notes: str = "",
-             normaliser=normalise_en, max_clips: int | None = None, warmup: int = 2) -> dict:
+             normaliser=normalise_en, max_clips: int | None = None, warmup: int = 2,
+             hardware_profile: str | None = None, device_name: str | None = None) -> dict:
     """Runs one model on one test set, appends a row to results.csv, saves per-clip outputs."""
     clips = read_manifest(manifest)
     if max_clips:
@@ -299,7 +303,7 @@ def evaluate(model, model_name: str, manifest: str, test_set: str, results_dir: 
         if (i + 1) % 25 == 0:
             print(f"  {i + 1}/{len(clips)} clips")
 
-    peak = _peak_mem_gb()
+    peak = model.peak_mem_gb() if hasattr(model, "peak_mem_gb") else _peak_mem_gb()
 
     w_err, w_len, c_err, c_len, halluc = [], [], [], [], 0
     is_noise = all(not o["ref"].strip() for o in outputs)
@@ -321,6 +325,7 @@ def evaluate(model, model_name: str, manifest: str, test_set: str, results_dir: 
     failed = sum(bool(o["error"]) for o in outputs)
 
     profile, device = device_info()
+    profile, device = hardware_profile or profile, device_name or device
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_id = f"{stamp}_{re.sub(r'[^A-Za-z0-9]+', '-', model_name)}_{test_set}"
     row = {
