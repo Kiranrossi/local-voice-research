@@ -1,0 +1,2 @@
+# Overleaf / latexmk: build with XeLaTeX
+$pdf_mode = 5;
