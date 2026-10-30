@@ -5,6 +5,10 @@ Research comparing **speech-to-text (STT)** and **text-to-speech (TTS)** models 
 1. **English**: choose a best model and a fallback for STT and TTS, across CPU-only, Apple Silicon (8 GB), and NVIDIA GPU setups.
 2. **Tamlish** (Tamil-English code-mixed speech): test whether any open model already handles it, and propose a fine-tuning plan.
 
+**Paper:** [`paper/main.pdf`](paper/main.pdf) (IEEE format, 9 pages). LaTeX source in [`paper/`](paper/); `paper/overleaf.zip` uploads straight to Overleaf (compiler: XeLaTeX).
+
+**Colab notebooks:** [STT](https://colab.research.google.com/github/Kiranrossi/local-voice-research/blob/main/notebooks/01_stt_colab.ipynb) · [TTS](https://colab.research.google.com/github/Kiranrossi/local-voice-research/blob/main/notebooks/02_tts_colab.ipynb) · [Tamlish](https://colab.research.google.com/github/Kiranrossi/local-voice-research/blob/main/notebooks/03_tamlish_colab.ipynb)
+
 ## Evaluation approach
 
 Every recommendation rests on six evidence layers:
