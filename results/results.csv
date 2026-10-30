@@ -1,1 +1,0 @@
-run_id,timestamp,objective,task,model,variant,quantization,runtime,hardware_profile,device_name,test_set,n_clips,wer,cer,mer,rtf,latency_median_s,peak_mem_gb,notes
